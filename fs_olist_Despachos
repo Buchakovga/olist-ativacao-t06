@@ -1,0 +1,77 @@
+%sql
+WITH tb_pedidos AS (
+  SELECT *
+  FROM tmw_olist.orders
+  WHERE order_purchase_timestamp < '2018-07-01'
+), pega_dados  as (
+select 
+    a.order_purchase_timestamp,
+    a.order_id,
+    b.seller_id,
+    a.order_approved_at,
+    a.order_estimated_delivery_date,
+    a.order_delivered_customer_date,
+    a.order_delivered_carrier_date,  
+    datediff(to_date('2018-07-01'),a.order_purchase_timestamp) as MOB,
+    datediff(a.order_estimated_delivery_date,a.order_approved_at ) as sla_entrega,
+    datediff(a.order_delivered_customer_date,a.order_approved_at ) as tmp_medio_entrega,
+    datediff(a.order_delivered_customer_date,a.order_delivered_carrier_date ) as  tmp_medio_transporte,
+  b.product_id,
+  b.price,
+  b.freight_value,
+  cast((b.freight_value / b.price) as decimal(5,2) ) as Perc_frete_por_prod  
+  FROM 
+    tb_pedidos a
+
+    left join tmw_olist.order_items b 
+      on a.order_id  = b.order_id 
+) , dados_finais as (
+  select 
+    seller_id,
+    order_purchase_timestamp,
+    order_id, 
+    avg(coalesce(case 
+      when mob <  28 then Perc_frete_por_prod end,0)) as Perc_Frete_Prod_d28 ,
+    avg(coalesce(case     
+      when mob <  56 then Perc_frete_por_prod end,0)) as Perc_Frete_Prod_d56 ,
+    avg(coalesce(case 
+      when mob <  365 then Perc_frete_por_prod end,0)) as Perc_Frete_Prod_d365, 
+    avg(coalesce(case 
+      when mob > 0 then Perc_frete_por_prod end,0)) as Perc_Frete_Prod_Vida,
+
+    coalesce(avg(case 
+      when mob <  28 then freight_value end),0) as Frete_medio_d28 ,
+    coalesce(avg(case     
+      when mob <  56 then freight_value end),0) as Frete_medio_d56 ,
+    coalesce(avg(case 
+      when mob <  365 then freight_value end),0) as Frete_medio_d365, 
+    coalesce(avg(case 
+      when mob >  0 then freight_value end),0) as Frete_medio_Vida,
+    avg(sla_entrega) as sla_entrega,
+    avg(tmp_medio_entrega) as tmp_medio_entrega,
+    avg(tmp_medio_transporte) as tmp_medio_transporte,
+    *
+
+    from 
+      pega_dados 
+    
+  group by all 
+
+)
+ select * from dados_finais
+where 
+  seller_id = '8b321bb669392f5163d04c59e235e066'
+
+
+
+    and order_id = '03d08548bb620e09cd4821b96f12a1e6'
+
+
+select * from pega_dados
+where 
+  seller_id = '8b321bb669392f5163d04c59e235e066'
+    and order_id = '03d08548bb620e09cd4821b96f12a1e6'
+
+
+
+      
