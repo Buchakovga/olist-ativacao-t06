@@ -16,6 +16,8 @@ WITH params AS (
             count(DISTINCT case when date(o.order_purchase_timestamp) >= date_sub(p.date_ref, 365)
                             AND date(o.order_purchase_timestamp) <= p.date_ref
                             THEN date(o.order_purchase_timestamp) END) as dias_vendas_D365,
+
+            -- dias sem vendas                
             datediff(p.date_ref, min(date(o.order_purchase_timestamp))) -
             count(DISTINCT date(o.order_purchase_timestamp)) as dias_sem_vendas,
 
